@@ -1,0 +1,13 @@
+{
+  "mcp": {
+    "servers": {
+      "nim-image": {
+        "type": "local",
+        "command": [
+          "node",
+          "C:\\Users\\USUARIO\\Desktop\\Creando un agente de whatssapp\\server.mjs"
+        ]
+      }
+    }
+  }
+}

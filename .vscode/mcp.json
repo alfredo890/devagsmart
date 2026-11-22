@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "nim-image": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:\\Users\\USUARIO\\Desktop\\Creando un agente de whatssapp\\server.mjs"
+      ]
+    }
+  }
+}

@@ -1,0 +1,5 @@
+nim.key
+imagenes/
+configuracion-y-credenciales.txt
+.env
+.env.local

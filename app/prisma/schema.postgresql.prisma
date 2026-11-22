@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===== Empresa única =====
+model CompanySettings {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique @default("company")
+  industry     String?
+  description  String?
+  country      String?
+  city         String?
+  timezone     String   @default("America/Colombia/Bogota")
+  currency     String   @default("COP")
+  address      String?
+  phone        String?
+  email        String?
+  website      String?
+  hours        String?
+  brandColor   String?  @default("#2563eb")
+  logoUrl      String?
+  safeMode     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ===== Usuarios =====
+enum Role {
+  OWNER
+  ADMIN
+  AGENT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(AGENT)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  activities   ActivityLog[]
+}
+
+// ===== Asistentes =====
+enum AssistantStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+}
+
+model Assistant {
+  id              String           @id @default(cuid())
+  name            String
+  avatarUrl       String?
+  objective       String?
+  channels        String           @default("[]")
+  tone            String?
+  instructions    String?
+  prohibitions    String?
+  schedule        String?
+  welcome         String?
+  model           String?          @default("openai/gpt-4o-mini")
+  monthlyLimit    Int?
+  status          AssistantStatus  @default(DRAFT)
+  version         Int              @default(1)
+  publishedVersion Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  knowledge       KnowledgeSource[] @relation("AssistantKnowledge")
+  conversations   Conversation[]
+  channelConnections ChannelConnection[]
+}
+
+// ===== Conocimiento =====
+enum KnowledgeType {
+  TEXT
+  FAQ
+  PRODUCT
+  SERVICE
+  PRICE
+  POLICY
+  PDF
+  TXT
+  CSV
+  XLSX
+  WEB
+}
+
+model KnowledgeSource {
+  id          String        @id @default(cuid())
+  title       String
+  type        KnowledgeType
+  content     String?
+  fileUrl     String?
+  fileName    String?
+  fileSize    Int?
+  mimeType    String?
+  url         String?
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  assistants  Assistant[]   @relation("AssistantKnowledge")
+}
+
+// ===== Canales =====
+enum ChannelType {
+  WHATSAPP
+  INSTAGRAM
+}
+
+model ChannelConnection {
+  id                String      @id @default(cuid())
+  type              ChannelType
+  label             String
+  phoneNumber       String?
+  phoneNumberId     String?
+  wabaId            String?
+  igUserId          String?
+  igUsername        String?
+  pageId            String?
+  metaAppId         String?
+  accessTokenEnc    String?
+  verifyToken       String?
+  connected         Boolean     @default(false)
+  lastError         String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  assistantId       String?
+  assistant         Assistant?  @relation(fields: [assistantId], references: [id])
+  conversations     Conversation[]
+}
+
+// ===== Contactos (CRM único) =====
+model Contact {
+  id                String   @id @default(cuid())
+  displayName       String?
+  phone             String?
+  email             String?
+  externalIds       String   @default("{}")
+  tags              String   @default("[]")
+  notes             String?
+  firstInteraction  DateTime?
+  lastInteraction   DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  conversations     Conversation[]
+  opportunities     Opportunity[]
+  tasks             CrmTask[]
+}
+
+// ===== Conversaciones =====
+enum ConversationStatus {
+  OPEN
+  PENDING
+  CLOSED
+  HUMAN_CONTROL
+}
+
+model Conversation {
+  id             String             @id @default(cuid())
+  contactId      String
+  contact        Contact            @relation(fields: [contactId], references: [id])
+  channelType    ChannelType
+  channelId      String?
+  channel        ChannelConnection? @relation(fields: [channelId], references: [id])
+  assistantId    String?
+  assistant      Assistant?         @relation(fields: [assistantId], references: [id])
+  status         ConversationStatus @default(OPEN)
+  assignedTo     String?
+  lastMessageAt  DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  messages       Message[]
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  direction      String
+  channelType    ChannelType
+  externalId     String?
+  type           String   @default("text")
+  content        String?
+  mediaUrl       String?
+  status         String?
+  simulated      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+// ===== Oportunidades =====
+enum OpportunityStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  WON
+  LOST
+}
+
+model Opportunity {
+  id          String           @id @default(cuid())
+  contactId   String
+  contact     Contact          @relation(fields: [contactId], references: [id])
+  title       String
+  stage       OpportunityStage @default(NEW)
+  value       Float?
+  currency    String?
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+// ===== Tareas CRM =====
+model CrmTask {
+  id          String   @id @default(cuid())
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  title       String
+  description String?
+  dueAt       DateTime?
+  done        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===== Auditoría =====
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String
+  entity      String?
+  entityId    String?
+  metadata    String?
+  createdAt   DateTime @default(now())
+}
+
+// ===== Webhooks dedup =====
+model ProcessedWebhookEvent {
+  id          String   @id @default(cuid())
+  eventId     String   @unique
+  source      String
+  payload     String?
+  createdAt   DateTime @default(now())
+}
+
+// ===== Background jobs =====
+model BackgroundJob {
+  id          String   @id @default(cuid())
+  type        String
+  payload     String?
+  status      String   @default("pending")
+  attempts    Int      @default(0)
+  lastError   String?
+  runAt       DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===== Uso y costos =====
+model UsageRecord {
+  id          String   @id @default(cuid())
+  provider    String
+  model       String?
+  tokensIn    Int      @default(0)
+  tokensOut   Int      @default(0)
+  costUsd     Float    @default(0)
+  createdAt   DateTime @default(now())
+}
+
+// ===== Owner assistant authorized numbers =====
+model OwnerNumber {
+  id          String   @id @default(cuid())
+  phone       String   @unique
+  label       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
